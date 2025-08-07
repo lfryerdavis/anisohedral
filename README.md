@@ -1,9 +1,9 @@
-## anisohedral
+# anisohedral
 Find anisohedral criteria
 
-# Background
+## Background
 
-# Software Guide
+## Software Guide
 The simplest set of options is see the boundaries of all the shapes that are going to be used in the project.
 
 ```
