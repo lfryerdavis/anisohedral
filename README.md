@@ -1,2 +1,3 @@
 # anisohedral
-FInd anisohedral criteria
+Find anisohedral criteria
+
