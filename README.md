@@ -3,6 +3,14 @@ This is a project to find anisohedral criteria for polyforms.
 
 ## Background
 
+## Installing the Software
+
+You will need to download the software for the ear cutting triangulation algorithm at [https://github.com/mapbox/earcut](https://github.com/mapbox/earcut.hpp). This is just one header file.
+
+You will have to ensure that the header file is downloaded into the same directory as the anisohedral software or modify the makefile appropriately. 
+
+The makefile for the anisohedral software is currently set up for a default C++20 configuration for macOS Sequoia 15.6. It is not configured for any specific IDE. If you have a different setup, you may need to make minor changes to the Makefile. 
+
 ## Software Guide
 The simplest set of options is to see the boundaries of all the shapes that are going to be used in the project.
 
