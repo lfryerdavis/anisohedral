@@ -49,4 +49,4 @@ The `-depth` option specifies how deep in the recursion you wish to go. There we
 
 <img width="459" height="356" alt="depth2_1" src="https://github.com/user-attachments/assets/8a0830b6-c01b-4745-a6ba-fea7394b54f7" />
 <img width="255" height="336" alt="depth2_2" src="https://github.com/user-attachments/assets/fcffb8c0-52cf-4b55-b3bd-40dd3059e2eb" />
-<img width="256" height="227" alt="depth2_3" src="https://github.com/user-attachments/assets/a8332640-51aa-49d0-a47b-566f654171d4" />
+<img width="384" height="341" alt="depth2_3" src="https://github.com/user-attachments/assets/a8332640-51aa-49d0-a47b-566f654171d4" />
