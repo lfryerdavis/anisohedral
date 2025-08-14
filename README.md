@@ -36,7 +36,7 @@ The `-tests` option shows a representative of all the test tiles. These tiles ca
 
 The `-boundaryonly` option will only show the boundary of the generated tiles. There will be no tile splits.
 
-For the Laves tiles, the tiles can have the neighbours generated using the `-showneighbours` option. This will be used to count the vertex degree of each tile using the boundaries when extracting the tile topologies.
+For the Laves tilings, the tiles can have the neighbours generated using the `-showneighbours` option. This will be used to count the vertex degree of each tile using the boundaries when extracting the tile topologies.
 
 The `-standalone` option is used to have a standalone TikZ file instead of a regular LaTeX file. This will probably be what you want, to allow the copy and paste of the standalone TikZ code into a LaTeX file, or to copy the compiled picture into other files. The regular LaTeX file will not be scaled, so the output will often not fit into a page.
 
