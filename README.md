@@ -3,6 +3,8 @@ This is a project to find anisohedral criteria for polyforms.
 
 ## Background
 
+Empirically, most isohedral tilings satisfy Conway's Criterion using the tiles' boundary. However, to the author's knowledge, there is no corresponding criteria for anisohedral tilings. This work is a first step in finding anisohedral tiling criteria for polyforms. By using the topological equivalence between the Laves tilings and isohedral tilings, we set up a method to extract equivalent anisohedral topologies. This will then be compared with equivalent boundary words to determine criteria for anisohedral tilings.
+
 ## Installing the Software
 
 You will need to download the software for the ear cutting triangulation algorithm at [https://github.com/mapbox/earcut](https://github.com/mapbox/earcut.hpp). This is just one header file.
