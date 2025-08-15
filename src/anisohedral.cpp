@@ -3,6 +3,9 @@
 //
 //  Created by Lee Fryer-Davis on 2025-06-28.
 //
+//  This is adapted from the command line arguments of Craig Kaplan's heesch-sat at 
+//  https://github.com/isohedral/heesch-sat
+//
 
 #include <iostream>
 #include <fstream>
