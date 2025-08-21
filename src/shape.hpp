@@ -22,7 +22,10 @@ extern bool showInternalGraphAndBoundaries;
 extern bool showInternalGraphOnly;
 extern bool showTriangulation;
 extern bool showVertexIndices;
+extern bool showVertexCoordinates;
 extern bool isBoundaryOnly;
+
+bool isCollinear(double ax, double ay, double bx, double by, double cx, double cy);
 
 struct shape {
     shape(string name = "", size_t currDepth = 0);
@@ -64,6 +67,7 @@ struct shape {
     size_t numBoundaryVertices;
     vector<vertex> anchorVertices; // need this since there is a reordering and duplication when adding anchors to the regular graph
     vector<size_t> anchorIndices;
+    vector<bool> collinearBoundaryVertexIndices;
     vector<vector<size_t>> weights;
     vector<vector<vector<size_t> > > allPairsPaths;
     vector<edge> edges;
