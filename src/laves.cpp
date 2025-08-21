@@ -45,6 +45,8 @@ bool isTileSplitQuad = false;
 bool isTileSplitPent = false;
 bool isTileSplitBent = false;
 bool isTileSplitStar = false;
+bool isTileBroken = false;
+bool isTileSquareBroken = false;
 
 bool isStandalonePicture = false;
 bool isShowSplitGraphs = false;
@@ -83,6 +85,8 @@ size_t tileSplitQuad = -1;
 size_t tileSplitPent = -1;
 size_t tileSplitBent = -1;
 size_t tileSplitStar = -1;
+size_t tileBroken = -1;
+size_t tileSquareBroken = -1;
 
 string centralThickness("thick");
 string neighbourThickness("ultra thin");
@@ -959,6 +963,78 @@ void createTileSplitStar()
     gPictures->write(pictTileSplitStar);
 }
 
+void createTileBroken()
+{
+    tileBroken = gShapes->getNewID("tileBroken");
+    
+    debug(lavesDebugSimple, "tileBroken shape id = " + to_string(tileBroken) + "\n");
+
+    gShapes->addVertex(tileBroken, 0, 0);
+    gShapes->addVertex(tileBroken, 1./6., sqrt3/6., vertexType::Knot);
+    gShapes->addVertex(tileBroken, -0.125, sqrt3/8.);
+    gShapes->addVertex(tileBroken, -0.25, sqrt3/4., vertexType::Knot);
+    gShapes->addVertex(tileBroken, -0.375, 3*sqrt3/8., vertexType::Knot);
+    gShapes->addVertex(tileBroken, -0.5, sqrt3/2.);
+    gShapes->addVertex(tileBroken, -0.375, 5*sqrt3/8., vertexType::Knot);
+    gShapes->addVertex(tileBroken, -0.25, 3*sqrt3/4., vertexType::Knot);
+    gShapes->addVertex(tileBroken, -0.125, 7*sqrt3/8., vertexType::Knot);
+    gShapes->addVertex(tileBroken, 0, sqrt3);
+    gShapes->addVertex(tileBroken, 0.25, sqrt3, vertexType::Knot);
+    gShapes->addVertex(tileBroken, 0.5, sqrt3, vertexType::Knot);
+    gShapes->addVertex(tileBroken, 0.75, sqrt3, vertexType::Knot);
+    gShapes->addVertex(tileBroken, 1, sqrt3);
+    gShapes->addVertex(tileBroken, 1.125, 7*sqrt3/8., vertexType::Knot);
+    gShapes->addVertex(tileBroken, 1.25, 3*sqrt3/4., vertexType::Knot);
+    gShapes->addVertex(tileBroken, 1.375, 5*sqrt3/8., vertexType::Knot);
+    gShapes->addVertex(tileBroken, 1.5, sqrt3/2.);
+    gShapes->addVertex(tileBroken, 1.375, 3*sqrt3/8., vertexType::Knot);
+    gShapes->addVertex(tileBroken, 1.25, sqrt3/4., vertexType::Knot);
+    gShapes->addVertex(tileBroken, 1.125, sqrt3/8., vertexType::Knot);
+    gShapes->addVertex(tileBroken, 1, 0);
+    gShapes->addVertex(tileBroken, 0.75, 0, vertexType::Knot);
+    gShapes->addVertex(tileBroken, 0.5, 0, vertexType::Knot);
+    gShapes->addVertex(tileBroken, 0.25, 0, vertexType::Knot);
+    gShapes->addBoundaryEdges(tileBroken);
+    size_t tileBrokenAction = gActions->getNewID(tileBroken, gShapes->getName(tileBroken), "colorBorder", centralThickness, 0, 0, 0);
+    size_t pictTileBroken = gPictures->createPicture();
+    gPictures->addShape(pictTileBroken, tileBroken);
+    gPictures->addAction(pictTileBroken, tileBrokenAction);
+    gShapes->split(tileBroken);
+    gPictures->write(pictTileBroken);
+}
+
+void createTileSquareBroken()
+{
+    tileSquareBroken = gShapes->getNewID("tileSquareBroken");
+    
+    debug(lavesDebugSimple, "tileSquareBroken shape id = " + to_string(tileSquareBroken) + "\n");
+
+    gShapes->addVertex(tileSquareBroken, 0.25, 1);
+    gShapes->addVertex(tileSquareBroken, 0.5, 1, vertexType::Knot);
+    gShapes->addVertex(tileSquareBroken, 0.75, 1, vertexType::Knot);
+    gShapes->addVertex(tileSquareBroken, 1, 1);
+    gShapes->addVertex(tileSquareBroken, 1, 0.75, vertexType::Knot);
+    gShapes->addVertex(tileSquareBroken, 1, 0.5, vertexType::Knot);
+    gShapes->addVertex(tileSquareBroken, 1, 0.25, vertexType::Knot);
+    gShapes->addVertex(tileSquareBroken, 1, 0);
+    gShapes->addVertex(tileSquareBroken, 0.75, 0, vertexType::Knot);
+    gShapes->addVertex(tileSquareBroken, 0.5, 0, vertexType::Knot);
+    gShapes->addVertex(tileSquareBroken, 0.25, 0, vertexType::Knot);
+    gShapes->addVertex(tileSquareBroken, 0, 0);
+    gShapes->addVertex(tileSquareBroken, 0, 0.25);
+    gShapes->addVertex(tileSquareBroken, 1./3., 1./3., vertexType::Knot);
+    gShapes->addVertex(tileSquareBroken, 0.5, 0.5, vertexType::Knot);
+    gShapes->addVertex(tileSquareBroken, 2./3., 2./3., vertexType::Knot);
+    gShapes->addBoundaryEdges(tileSquareBroken);
+    size_t tileSquareBrokenAction = gActions->getNewID(tileSquareBroken, gShapes->getName(tileSquareBroken), "colorBorder", centralThickness, 0, 0, 0);
+    size_t pictTileSquareBroken = gPictures->createPicture();
+    gPictures->addShape(pictTileSquareBroken, tileSquareBroken);
+    gPictures->addAction(pictTileSquareBroken, tileSquareBrokenAction);
+    gShapes->split(tileSquareBroken);
+    gPictures->write(pictTileSquareBroken);
+}
+
+
 void createLaves()
 {
     if (isLaves || isHex) createHex();
@@ -992,4 +1068,6 @@ void createTests()
     if (isTests || isTileSplitPent) createTileSplitPent();
     if (isTests || isTileSplitBent) createTileSplitBent();
     if (isTests || isTileSplitStar) createTileSplitStar();
+    if (isTests || isTileBroken) createTileBroken();
+    if (isTests || isTileSquareBroken) createTileSquareBroken();
 }
