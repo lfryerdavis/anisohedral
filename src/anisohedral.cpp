@@ -3,7 +3,7 @@
 //
 //  Created by Lee Fryer-Davis on 2025-06-28.
 //
-//  This is adapted from the command line arguments of Craig Kaplan's heesch-sat at 
+//  This is adapted from the command line arguments of Craig Kaplan's heesch-sat at
 //  https://github.com/isohedral/heesch-sat
 //
 
@@ -163,6 +163,12 @@ int main( int argc, char **argv )
         } else if ( !strcmp( argv[idx], "-teststar" ) ) {
             isTileSplitStar = true;
             debug(aniDebugSimple, "arguments test star tile = " + boolToStr(isTileSplitStar) + "\n");
+        } else if ( !strcmp( argv[idx], "-testbroken" ) ) {
+            isTileBroken = true;
+            debug(aniDebugSimple, "arguments test broken tile = " + boolToStr(isTileBroken) + "\n");
+        } else if ( !strcmp( argv[idx], "-testsquarebroken" ) ) {
+            isTileSquareBroken = true;
+            debug(aniDebugSimple, "arguments test square broken tile = " + boolToStr(isTileSquareBroken) + "\n");
         } else if ( !strcmp( argv[idx], "-showsplitgraphs" ) ) {
             isShowSplitGraphs = true;
             debug(aniDebugSimple, "arguments show split graphs = " + boolToStr(isShowSplitGraphs) + "\n");
@@ -181,6 +187,9 @@ int main( int argc, char **argv )
         } else if ( !strcmp( argv[idx], "-showvertexindices" ) ) {
             showVertexIndices = true;
             debug(aniDebugSimple, "arguments show vertex indices = " + boolToStr(showVertexIndices) + "\n");
+        } else if ( !strcmp( argv[idx], "-showvertexcoordinates" ) ) {
+            showVertexCoordinates = true;
+            debug(aniDebugSimple, "arguments show vertex coordinates = " + boolToStr(showVertexCoordinates) + "\n");
         } else if ( !strcmp( argv[idx], "-showtriangulation" ) ) {
             showTriangulation = true;
             debug(aniDebugSimple, "arguments show triangulation = " + boolToStr(showTriangulation) + "\n");
