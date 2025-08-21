@@ -52,3 +52,12 @@ The `-depth` option specifies how deep in the recursion you wish to go. There we
 <img width="459" height="356" alt="depth2_1" src="https://github.com/user-attachments/assets/8a0830b6-c01b-4745-a6ba-fea7394b54f7" />
 <img width="255" height="336" alt="depth2_2" src="https://github.com/user-attachments/assets/fcffb8c0-52cf-4b55-b3bd-40dd3059e2eb" />
 <img width="384" height="341" alt="depth2_3" src="https://github.com/user-attachments/assets/a8332640-51aa-49d0-a47b-566f654171d4" />
+
+## Known Issues
+If there are many collinear knots, the earcut implementation potentially creates zero-area triangles in the triangulation. A more robust implementation could possibly address it. Since my implementation with adding extra anchors produces collinear knots with further subdivisions, this causes unavaoidable problems. An example where this has occurred is shown below in the test set `-tilesquarebroken` which has the vertices, anchors, and subsequently bad centroids. Notice that vertex 19 and 23 are the same vertex, and both are on the boundary.
+
+<img width="414" height="408" alt="tilesquarebroken" src="https://github.com/user-attachments/assets/eb4333aa-f8bd-4bfa-8c76-b76b83afa04d" />
+
+There are a few ways that I could fix this. I looked at a different implementation already, but that didn't work, since it didn't produce a convex triangulation. Other triangulation routines might sort this out in a better way. I have already removed all zero-area triangles from the triangulation but that still needs to be patched up properly to determine where overlaps might occur. This needs to be addressed by an improved method `shapes::addSplitEdges()`. I can add additional triangles where the zero-area triangles are located to connect effectively to the larger triangles. I can also perturb the vertex locations slightly so that there will be no zero-area triangles, then remove the low-area triangles and patch up the triangulation afterwards.
+
+Since all depth 1 shapes are unaffected by this, and my path for the fall doesn't require any depth two or greater splits in the short term, all of this is being deferred for now.
