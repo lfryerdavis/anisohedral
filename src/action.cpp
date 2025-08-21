@@ -17,7 +17,7 @@ using namespace std;
 extern ofstream outFile;
 
 size_t actionDebugSimple = 1;
-size_t actionDebugExtra = 1;
+size_t actionDebugExtra = 2;
 
 action::action(size_t shapeID, string shapeName, string color, string thickness, double x, double y, double rot, bool reflecty)
 {
