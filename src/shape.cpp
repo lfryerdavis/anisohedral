@@ -12,6 +12,7 @@
 #include <string>
 #include <iomanip>
 #include <algorithm>
+#include <cmath>
 #include <array>
 #include <format>
 #include <cstdlib> // used for random to display a random path - eventually cut
@@ -31,9 +32,12 @@ size_t shapeDebugDetailed = 3;
 
 bool showInternalGraphAndBoundaries = false;
 bool showInternalGraphOnly = false;
-bool showVertexIndices = false;
 bool showTriangulation = false;
+bool showVertexIndices = false;
+bool showVertexCoordinates = false;
 bool isBoundaryOnly = false;
+
+double epsilon = 0.0000001;
 
 string vertex::print()
 {
@@ -154,62 +158,78 @@ size_t shape::getNearestInternalNeighbourFromBoundary(size_t vertexID)
     debug(shapeDebugExtra, "Get nearest internal neighbour from boundary vertex " + to_string(vertexID) + " " + graphVertices[vertexID].print());
     
     // need to find nearest internal graph
+//    if (graphVertices[vertexID].mType == vertexType::Knot ||
+//        graphVertices[vertexID].mType == vertexType::Vertex ||
+//        graphVertices[vertexID].mType == vertexType::AnchorKnot)
     if (graphVertices[vertexID].mType == vertexType::Knot ||
-        graphVertices[vertexID].mType == vertexType::Vertex ||
-        graphVertices[vertexID].mType == vertexType::AnchorKnot)
+        graphVertices[vertexID].mType == vertexType::Vertex)
     {
         // can pick any of the neighbours
+        debug(shapeDebugExtra, "...Return simple case from boundary vertex " + to_string(vertexID) + " " + to_string(graphVertices[vertexID].mSplitGraphNeighbourVertexWithBoundaryIDs[0]) + "\n");
         return graphVertices[vertexID].mSplitGraphNeighbourVertexWithBoundaryIDs[0];
-    } else if (graphVertices[vertexID].mType == vertexType::Anchor)
+    } else if (graphVertices[vertexID].mType == vertexType::AnchorKnot and !collinearBoundaryVertexIndices[vertexID])
+    {
+        // can pick any of the neighbours
+        debug(shapeDebugExtra, "...Return almost simple case from boundary vertex " + to_string(vertexID) + " " + to_string(graphVertices[vertexID].mSplitGraphNeighbourVertexWithBoundaryIDs[0]) + "\n");
+        return graphVertices[vertexID].mSplitGraphNeighbourVertexWithBoundaryIDs[0];
+    } else if (graphVertices[vertexID].mType == vertexType::Anchor or graphVertices[vertexID].mType == vertexType::AnchorKnot)
     {
         // Need to move along boundary until the vertex is one of the types that has a neighbour into the graph
         // Do this in both directions
         // Then find a common vertex - that's the nearest neighbour
+        debug(shapeDebugExtra, "...In more complicated case from boundary vertex " + to_string(vertexID) + " slide from both boundary edges \n");
 
         if (foundBoundaryAnchors[vertexID])
         {
-            debug(shapeDebugExtra, "Nearest internal neighbour of " + to_string(vertexID) + " is " + to_string(graphVertices[vertexID].mSplitGraphNeighbourVertexWithBoundaryIDs[0]) + "\n");
+            debug(shapeDebugExtra, "...Nearest internal neighbour of " + to_string(vertexID) + " is " + to_string(graphVertices[vertexID].mSplitGraphNeighbourVertexWithBoundaryIDs[0]) + "\n");
             return graphVertices[vertexID].mSplitGraphNeighbourVertexWithBoundaryIDs[0];
         }
         foundBoundaryAnchors[vertexID] = true;
-        
-        size_t rightNeighbour = (vertexID - 1) % numBoundaryVertices;
-        vertex rightNeighbourVertex = graphVertices[rightNeighbour];
-        while (! (rightNeighbourVertex.mType == vertexType::Knot ||
-                  rightNeighbourVertex.mType == vertexType::Vertex ||
-                  rightNeighbourVertex.mType == vertexType::AnchorKnot))
-        {
-            rightNeighbour = (rightNeighbour - 1) % numBoundaryVertices;
-            rightNeighbourVertex = graphVertices[rightNeighbour];
-        }
 
         size_t leftNeighbour = (vertexID + 1) % numBoundaryVertices;
         vertex leftNeighbourVertex = graphVertices[leftNeighbour];
-        while (! (leftNeighbourVertex.mType == vertexType::Knot ||
-                  leftNeighbourVertex.mType == vertexType::Vertex ||
-                  leftNeighbourVertex.mType == vertexType::AnchorKnot))
+        while (leftNeighbourVertex.mSplitGraphNeighbourVertexWithBoundaryIDs.size() == 0)
+//            while (! (leftNeighbourVertex.mType == vertexType::Knot ||
+//                      leftNeighbourVertex.mType == vertexType::Vertex ||
+//                      leftNeighbourVertex.mType == vertexType::AnchorKnot)
+//                   and leftNeighbourVertex.mSplitGraphNeighbourVertexWithBoundaryIDs.size() == 2)
         {
+            debug(shapeDebugExtra, "...sliding left = " + to_string(leftNeighbour) + "\n");
             leftNeighbour = (leftNeighbour + 1) % numBoundaryVertices;
             leftNeighbourVertex = graphVertices[leftNeighbour];
         }
+        debug(shapeDebugExtra, "...left most found = " + to_string(leftNeighbour) + " " + leftNeighbourVertex.print());
 
-        debug(shapeDebugExtra, "Nearest neighbour: " + to_string(vertexID) + " left = " + to_string(leftNeighbour) + " right = " + to_string(rightNeighbour) + "\n");
+        size_t rightNeighbour = (vertexID - 1) % numBoundaryVertices;
+        vertex rightNeighbourVertex = graphVertices[rightNeighbour];
+        while (rightNeighbourVertex.mSplitGraphNeighbourVertexWithBoundaryIDs.size() == 0)
+//        while (! (rightNeighbourVertex.mType == vertexType::Knot ||
+//                  rightNeighbourVertex.mType == vertexType::Vertex ||
+//                  rightNeighbourVertex.mType == vertexType::AnchorKnot)
+//               and rightNeighbourVertex.mSplitGraphNeighbourVertexWithBoundaryIDs.size() == 2)
+        {
+            debug(shapeDebugExtra, "...sliding right = " + to_string(rightNeighbour) + "\n");
 
+            rightNeighbour = (rightNeighbour - 1) % numBoundaryVertices;
+            rightNeighbourVertex = graphVertices[rightNeighbour];
+        }
+        debug(shapeDebugExtra, "...right most found = " + to_string(rightNeighbour) + " " + rightNeighbourVertex.print());
+        
         for (size_t i = 0; i < leftNeighbourVertex.mSplitGraphNeighbourVertexWithBoundaryIDs.size(); i++)
         {
             size_t possibleleft = leftNeighbourVertex.mSplitGraphNeighbourVertexWithBoundaryIDs[i];
-            debug(shapeDebugExtra, "Possible left = " + to_string(possibleleft) + "\n");
+            debug(shapeDebugExtra, "...Possible left = " + to_string(possibleleft) + "\n");
             
             for (size_t j = 0; j < rightNeighbourVertex.mSplitGraphNeighbourVertexWithBoundaryIDs.size(); j++)
             {
-                debug(shapeDebugExtra, "Possible right = " + to_string(rightNeighbourVertex.mSplitGraphNeighbourVertexWithBoundaryIDs[j]) + "\n");
+                debug(shapeDebugExtra, "...Possible right = " + to_string(rightNeighbourVertex.mSplitGraphNeighbourVertexWithBoundaryIDs[j]) + "\n");
                 size_t rightCheck = rightNeighbourVertex.mSplitGraphNeighbourVertexWithBoundaryIDs[j];
                 if (rightCheck == possibleleft)
                 {
                     graphVertices[possibleleft].mSplitGraphNeighbourVertexWithBoundaryIDs.push_back(vertexID);
                     graphVertices[vertexID].mSplitGraphNeighbourVertexWithBoundaryIDs.push_back(possibleleft);
 
-                    debug(shapeDebugExtra, "Nearest neighbour: " + to_string(vertexID) + " left = " + to_string(leftNeighbour) + " right = " + to_string(rightNeighbour) + " common = " + to_string(possibleleft) + "\n");
+                    debug(shapeDebugExtra, "...Nearest neighbour: " + to_string(vertexID) + " left = " + to_string(leftNeighbour) + " right = " + to_string(rightNeighbour) + " common = " + to_string(possibleleft) + "\n");
                     
                     return possibleleft;
                 }
@@ -233,11 +253,11 @@ void shape::write()
     outFile << "\\tikzset{" << endl;
     outFile << "\t" << mName << "/.pic ={" << endl;
     
-    debug(shapeDebugExtra, "Write shape vertex " + mName + "\n");
+    debug(shapeDebugSimple, "Write shape vertex " + mName + "\n");
 
     // knot path first, then knots, vertices last
     // assuming at least two vertices - will break with only a single vertex
-    debug(shapeDebugSimple, "\nWrite border vertices " + printBoundaryVertices());
+    debug(shapeDebugExtra, "\nWrite border vertices " + printBoundaryVertices());
     debug(shapeDebugExtra, "Write graph vertices " + printGraphVertices());
     debug(shapeDebugExtra, "Write internal graph vertices " + printGraphInternalVertices());
     debug(shapeDebugExtra, "Show split graphs = " + boolToStr(isShowSplitGraphs) + "\n");
@@ -253,7 +273,7 @@ void shape::write()
         outFile << setprecision(10) << "\t\t\\draw (\\reg*" << graphVertices[edges[i].first].mX << ", \\reg*" << graphVertices[edges[i].first].mY <<") -- (\\reg*" << graphVertices[edges[i].second].mX << ", \\reg*" << graphVertices[edges[i].second].mY <<");" << endl;
     }
 
-    if (!isBoundaryOnly and isShowSplitGraphs)
+    if (!isBoundaryOnly and (isShowSplitGraphs or showInternalGraphAndBoundaries or showInternalGraphOnly))
     {
         // graph edges for split
         for (size_t i = 0; i < graphVertices.size(); i++)
@@ -299,7 +319,14 @@ void shape::write()
             outFile << setprecision(10) << "\t\t\\filldraw[color = colorAnchorKnot] (\\reg*" << graphVertices[i].mX << ", \\reg*" << graphVertices[i].mY <<") circle(\\radk);" << endl;
         // this is used to debug the vertex indices on top of each dot
         // - it's not pretty but it works
-//        outFile << setprecision(10) << "\t\t\\node[color = color1, align=left] at (\\reg*" << graphVertices[i].mX << ", \\reg*" << graphVertices[i].mY <<") {" << i << "};" << endl;
+        if (showVertexIndices)
+        {
+            outFile << setprecision(10) << "\t\t\\node[color = colorBorder] at (\\reg*" << graphVertices[i].mX << " - 0.04*\\reg, \\reg*" << graphVertices[i].mY <<"+0.035*\\reg) {" << i << "};" << endl;
+        }
+        if (showVertexCoordinates)
+        {
+            outFile << setprecision(10) << "\t\t\\node[color = colorBorder] at (\\reg*" << graphVertices[i].mX << " + 0.04*\\reg, \\reg*" << graphVertices[i].mY <<"-0.035*\\reg) {\\tiny (" << graphVertices[i].mX << ", " << graphVertices[i].mY << ") };" << endl;
+        }
     }
 
     // graph boundaries to internal vertices
@@ -347,6 +374,21 @@ void shape::write()
                 vertex vend = graphVertices[path[i+1]];
                 outFile << setprecision(10) << "\t\t\\draw[color=color4] (\\reg*" << vstart.mX << ", \\reg*" << vstart.mY <<") -- (\\reg*" << vend.mX << ", \\reg*" << vend.mY <<");" << endl;
             }
+        }
+    }
+    
+    if (!isBoundaryOnly and showTriangulation)
+    {
+        size_t numTriangles = triangulationIndices.size() / 3;
+        for (size_t i = 0; i < numTriangles; i++)
+        {
+            size_t first = internalGraphIndicesFromEarcutVertices[triangulationIndices[3*i]];
+            size_t second = internalGraphIndicesFromEarcutVertices[triangulationIndices[3*i + 1]];
+            size_t third = internalGraphIndicesFromEarcutVertices[triangulationIndices[3*i + 2]];
+            
+            outFile << setprecision(10) << "\t\t\\draw[color=colorCentroid] (\\reg*" << graphVertices[first].mX << ", \\reg*" << graphVertices[first].mY <<") -- (\\reg*" << graphVertices[second].mX << ", \\reg*" << graphVertices[second].mY <<");" << endl;
+            outFile << setprecision(10) << "\t\t\\draw[color=colorCentroid] (\\reg*" << graphVertices[second].mX << ", \\reg*" << graphVertices[second].mY <<") -- (\\reg*" << graphVertices[third].mX << ", \\reg*" << graphVertices[third].mY <<");" << endl;
+            outFile << setprecision(10) << "\t\t\\draw[color=colorCentroid] (\\reg*" << graphVertices[first].mX << ", \\reg*" << graphVertices[first].mY <<") -- (\\reg*" << graphVertices[third].mX << ", \\reg*" << graphVertices[third].mY <<");" << endl;
         }
     }
     
@@ -526,12 +568,12 @@ size_t shapes::addChildShape(size_t id, string & name)
     shape * ps = mShapes[id]; // now conduct the split on this shape
     
     ps->mNumCopies++;
-    debug(shapeDebugSimple, "Start Add child shape from id " + to_string(id) + "\n");
+    debug(shapeDebugExtra, "Start Add child shape from id " + to_string(id) + "\n");
 
     // this is the existing shape including any splits or paths or subshapes
     name = ps->mName + "_"  + to_string(ps->mNumCopies);
     shape * pShape = new shape(name, ps->mCurrDepth + 1);
-    debug(shapeDebugSimple, "Created child shape from id " + to_string(id) + "\n");
+    debug(shapeDebugExtra, "...Created child shape from id " + to_string(id) + "\n");
 
     mShapes.push_back(pShape);
     size_t newShapeID = mShapes.size() - 1;
@@ -539,18 +581,20 @@ size_t shapes::addChildShape(size_t id, string & name)
     gPictures->addShape(ps->mPictureID, newShapeID);
     pShape->mPictureID = ps->mPictureID;
 
-    debug(shapeDebugSimple, "New child shape from id " + to_string(id) + " newShapeID = " + to_string(newShapeID) +  " parentID = " + to_string(pShape->mParentID) + " pictureID = " + to_string(pShape->mPictureID) + "\n");
+    debug(shapeDebugExtra, "...New child shape from id " + to_string(id) + " newShapeID = " + to_string(newShapeID) + " parentID = " + to_string(pShape->mParentID) + " pictureID = " + to_string(pShape->mPictureID) + "\n");
+
+    debug(shapeDebugExtra, "...New child shape from id " + to_string(id) + " numActions in parent = " + to_string(ps->mActions.size()) + "\n");
 
     for (size_t i = 0; i < ps->mActions.size(); i++)
     {
-        debug(shapeDebugSimple, "Adding action from id " + to_string(id) + " i = " + to_string(i) + "\n");
+        debug(shapeDebugExtra, "...Adding action from id " + to_string(id) + " i = " + to_string(i) + "\n");
         size_t newActionID = gActions->getNewIDFromParent(id, newShapeID, i);
         pShape->mActions.push_back(newActionID);
         gPictures->addAction(ps->mPictureID, newActionID);
-        debug(shapeDebugSimple, "New child shape from id " + to_string(id) + " added new action i = " + to_string(i) +  " actionID = " + to_string(newActionID) + "\n");
+        debug(shapeDebugExtra, "...New child shape from id " + to_string(id) + " added new action i = " + to_string(i) +  " actionID = " + to_string(newActionID) + "\n");
     }
-    debug(shapeDebugSimple, "Add child shape from id " + to_string(id) + " new name = " + pShape->mName + " depth = " + to_string(pShape->mCurrDepth) + "\n");
-    
+    debug(shapeDebugExtra, "...Add child shape from id " + to_string(id) + " new name = " + pShape->mName + " depth = " + to_string(pShape->mCurrDepth) + "\n");
+
     return newShapeID;
 }
 
@@ -644,12 +688,12 @@ void shapes::split(size_t id)
     }
     shape * ps = mShapes[id]; // now conduct the split on this shape
     
-    debug(shapeDebugSimple, "Split for id " + to_string(id) + " parent = " + to_string(ps->mParentID) + " picture = " + to_string(ps->mPictureID) + " actions = ");
+    debug(shapeDebugExtra, "Split for id " + to_string(id) + " parent = " + to_string(ps->mParentID) + " picture = " + to_string(ps->mPictureID) + " actions = ");
     for (size_t i = 0; i < ps->mActions.size(); i++)
     {
-        debug(shapeDebugSimple, to_string(ps->mActions[i]) + " ");
+        debug(shapeDebugExtra, to_string(ps->mActions[i]) + " ");
     }
-    debug(shapeDebugSimple, "\n");
+    debug(shapeDebugExtra, "\n");
 
     debug(shapeDebugExtra, "Split for id " + to_string(id) + " currDepth = " + to_string(getCurrentDepth(id)) + "\n");
 
@@ -664,7 +708,7 @@ void shapes::split(size_t id)
         return;
     ps->mHasSplit = true;
 
-    debug(shapeDebugExtra, "Starting split vertices: \n" + ps->printGraphVertices());
+    debug(shapeDebugSimple, "Starting split vertices shape id = " + to_string(id) + " : \n" + ps->printGraphVertices());
         
     // Process to split a tile
     // 1. Add anchors on boundaries using knots and vertices
@@ -714,7 +758,7 @@ void shapes::split(size_t id)
     // 6. Create all pairs paths from anchors and vertices to all anchors and vertices
     // ***********************************************************************************
 
-    createAllPairsPaths(id);
+//    createAllPairsPaths(id);
         
     // ***********************************************************************************
     // 7. Saving the split in an atlas and recurse as needed
@@ -723,7 +767,7 @@ void shapes::split(size_t id)
     // form Catalan-style recursion for topology - need to save all split shapepools on each side of path
     // create "atlas" - equivalent to dynamic programming
     
-    createChildShapes(id);
+//    createChildShapes(id);
     
     debug(shapeDebugSimple, "Completed paths and new shapes for shape id " + to_string(id) + "\n\n\n");
 }
@@ -738,12 +782,13 @@ void shapes::populateAnchors(size_t id)
         exit(1);
     }
     
-    debug(shapeDebugExtra, "Start populate anchors for shape id " + to_string(id) + "\n");
+    debug(shapeDebugSimple, "Start populate anchors for shape id " + to_string(id) + " ");
 
     ps->mHaveFoundAnchors = true;
      
     // the boundaries are contiguous and clockwise order
     size_t numBoundaryVertices = ps->graphVertices.size();
+    debug(shapeDebugExtra, "num boundary vertices = " + to_string(numBoundaryVertices) + "\n");
     // each vertex neighbour needs to be cleared
     for (size_t i = 0; i < numBoundaryVertices; i++)
     {
@@ -760,14 +805,14 @@ void shapes::populateAnchors(size_t id)
     // Insert three anchors between each vertex - can convert knots if necessary
     while(ps->graphVertices[first].mType != vertexType::Vertex)
         first++;
-    debug(shapeDebugDetailed, "Populate Anchors shape id = " + to_string(id) + " first = " + to_string(first) + "\n");
+    debug(shapeDebugExtra, "Populate Anchors shape id = " + to_string(id) + " first = " + to_string(first) + "\n");
     
     while(ps->graphVertices[last].mType != vertexType::Vertex)
         last--;
-    debug(shapeDebugDetailed, "Populate Anchors shape id = " + to_string(id) + " last = " + to_string(last) + "\n");
+    debug(shapeDebugExtra, "Populate Anchors shape id = " + to_string(id) + " last = " + to_string(last) + "\n");
 
-    debug(shapeDebugDetailed, "Before boundary modifications, shape id = " + to_string(id) + "\n");
-    debug(shapeDebugDetailed, ps->printGraphVertices());
+    debug(shapeDebugExtra, "Before boundary modifications, shape id = " + to_string(id) + "\n");
+    debug(shapeDebugExtra, ps->printGraphVertices());
 
     addBoundaryAnchors(id, last, first); // must be clockwise
     
@@ -807,9 +852,9 @@ void shapes::populateAnchors(size_t id)
         }
     }
     
-    debug(shapeDebugDetailed, "After anchors added shape id = " + to_string(id) + "\n");
-    debug(shapeDebugDetailed, ps->printGraphVertices());
-    debug(shapeDebugDetailed, ps->printAnchorVertices());
+    debug(shapeDebugExtra, "After anchors added shape id = " + to_string(id) + "\n");
+    debug(shapeDebugExtra, ps->printGraphVertices());
+    debug(shapeDebugExtra, ps->printAnchorVertices());
 
     // After all Anchors have been created, replace the mVertices with the Anchors for the appropriate splits
     // Renumber all vertices in graph so the boundary vertices are contiguous and clockwise
@@ -822,8 +867,8 @@ void shapes::populateAnchors(size_t id)
         currVxIndex = (currVxIndex + 1) % numAnchors;
     }
     
-    debug(shapeDebugDetailed, "After anchors redoing graph vertices shape id = " + to_string(id) + "\n");
-    debug(shapeDebugDetailed, ps->printGraphVertices());
+    debug(shapeDebugExtra, "After anchors redoing graph vertices shape id = " + to_string(id) + "\n");
+    debug(shapeDebugExtra, ps->printGraphVertices());
 
     addBoundaryEdges(id);
 
@@ -847,11 +892,11 @@ void shapes::populateAnchors(size_t id)
     
     ps->numBoundaryVertices = ps->graphVertices.size();
     
-    debug(shapeDebugDetailed, "After populate anchors information for shape id = " + to_string(id) + "\n");
-    debug(shapeDebugDetailed, ps->printGraphVertices());
-    debug(shapeDebugDetailed, ps->printAnchorVertices());
+    debug(shapeDebugSimple, "After populate anchors information for shape id = " + to_string(id) + "\n");
+    debug(shapeDebugSimple, ps->printGraphVertices());
+    debug(shapeDebugSimple, ps->printAnchorVertices());
 
-    debug(shapeDebugExtra, "Completed populate anchors for shape id " + to_string(id) + "\n");
+    debug(shapeDebugSimple, "Completed populate anchors for shape id " + to_string(id) + "\n");
 }
 
 void shapes::addBoundaryAnchors(size_t id, size_t leftID, size_t rightID)
@@ -863,12 +908,12 @@ void shapes::addBoundaryAnchors(size_t id, size_t leftID, size_t rightID)
     {
         size_t maxID = ps->getNumVertices() - 1; // still no internal graph - only boundary
         numExistingKnots = maxID - leftID + rightID;
-        debug(shapeDebugDetailed, "Shape id " + to_string(id) + " cross over existing knots " + to_string(numExistingKnots) + "\n");
+        debug(shapeDebugExtra, "Shape id " + to_string(id) + " cross over existing knots " + to_string(numExistingKnots) + "\n");
     }
     else
     {
         numExistingKnots = rightID - leftID - 1;
-        debug(shapeDebugDetailed, "Shape id " + to_string(id) + " not cross over existing knots " + to_string(numExistingKnots) + "\n");
+        debug(shapeDebugExtra, "Shape id " + to_string(id) + " not cross over existing knots " + to_string(numExistingKnots) + "\n");
     }
     size_t currIndex = leftID % ps->getNumVertices();
     
@@ -941,25 +986,25 @@ void shapes::addBoundaryAnchors(size_t id, size_t leftID, size_t rightID)
         
     } else if (numExistingKnots >= 3)
     {
-        debug(shapeDebugDetailed, "Shape id " + to_string(id) + " add boundary anchors: left " + to_string(leftID) + " right " + to_string(rightID) + " currIndex "  + to_string(currIndex) + "\n");
+        debug(shapeDebugExtra, "Shape id " + to_string(id) + " add boundary anchors: left " + to_string(leftID) + " right " + to_string(rightID) + " currIndex "  + to_string(currIndex) + "\n");
 
         currIndex = (currIndex + 1) % ps->getNumVertices();
         vertex cv = ps->graphVertices[currIndex];
         cv.mType = vertexType::AnchorKnot;
         ps->anchorVertices.push_back(cv);
-        debug(shapeDebugDetailed, "Shape id " + to_string(id) + " add boundary anchors: push anchor, currIndex " + to_string(currIndex) + "\n");
+        debug(shapeDebugExtra, "Shape id " + to_string(id) + " add boundary anchors: push anchor, currIndex " + to_string(currIndex) + "\n");
 
         currIndex = (currIndex + 1) % ps->getNumVertices();
         cv = ps->graphVertices[currIndex];
         cv.mType = vertexType::AnchorKnot;
         ps->anchorVertices.push_back(cv);
-        debug(shapeDebugDetailed, "Shape id " + to_string(id) + " add boundary anchors: push anchor, currIndex " + to_string(currIndex) + "\n");
+        debug(shapeDebugExtra, "Shape id " + to_string(id) + " add boundary anchors: push anchor, currIndex " + to_string(currIndex) + "\n");
 
         currIndex = (currIndex + 1) % ps->getNumVertices();
         cv = ps->graphVertices[currIndex];
         cv.mType = vertexType::AnchorKnot;
         ps->anchorVertices.push_back(cv);
-        debug(shapeDebugDetailed, "Shape id " + to_string(id) + " add boundary anchors: push anchor, currIndex " + to_string(currIndex) + "\n");
+        debug(shapeDebugExtra, "Shape id " + to_string(id) + " add boundary anchors: push anchor, currIndex " + to_string(currIndex) + "\n");
 
         // no more anchors needed
         // remaining knots are just added to the anchor list as-is
@@ -970,7 +1015,7 @@ void shapes::addBoundaryAnchors(size_t id, size_t leftID, size_t rightID)
         for (size_t i = 0; i < remainingKnots; i++)
         {
             currIndex = (currIndex + 1) % ps->getNumVertices();
-            debug(shapeDebugDetailed, "Shape id " + to_string(id) + " i " + to_string(i) + " currIndex " + to_string(currIndex) + "\n");
+            debug(shapeDebugExtra, "Shape id " + to_string(id) + " i " + to_string(i) + " currIndex " + to_string(currIndex) + "\n");
             vertex vx = ps->graphVertices[currIndex];
             ps->anchorVertices.push_back(vx);
         }
@@ -991,14 +1036,16 @@ void shapes::triangulateBorderAndCreateCentroids(size_t id)
 {
     shape * ps = mShapes[id];
 
-    debug(shapeDebugExtra, "Start triangulation for shape id " + to_string(id) + "\n");
+    debug(shapeDebugSimple, "Start triangulation for shape id " + to_string(id) + "\n");
 
     // act on a copy of the boundary vertices
     // print out all of the vertex information known before splitting
     debug(shapeDebugExtra, "About to triangulate all vertices for shape " + to_string(id) + "\n");
-    debug(shapeDebugDetailed, ps->printGraphVertices());
-    debug(shapeDebugDetailed, ps->printBoundaryVertices());
+    debug(shapeDebugExtra, ps->printGraphVertices());
+    debug(shapeDebugExtra, ps->printBoundaryVertices());
         
+    ps->collinearBoundaryVertexIndices.clear();
+    
     // Using /mapbox/earcut.hpp from https://github.com/mapbox/earcut.hpp
     // Uses the ISC license 2015
     //
@@ -1025,44 +1072,117 @@ void shapes::triangulateBorderAndCreateCentroids(size_t id)
 
     // The first polyline defines the main polygon.
     // The polygon can have holes by populating the second element of the polygon vector
+    
     vector<Point> vertexList;
+
     size_t numBoundaryVertices = ps->graphVertices.size();
     for (size_t i = 0; i < numBoundaryVertices; i++)
     {
-        // AnchorKnots we still want as part of the earcut
-        // But ignore Anchors
+        ps->collinearBoundaryVertexIndices.push_back(false);
+    }
+    
+    for (size_t i = 0; i < numBoundaryVertices; i++)
+    {
+        // AnchorKnots we still want as part of the triangulation - AnchorKnots change the topology
+        // But ignore Anchors - anchors don't change the topology
+        // Knots change the topology, so we want them too
         if (ps->graphVertices[i].mType == vertexType::Anchor)
+        {
+            debug(shapeDebugExtra, "VertexList for earcut i = " + to_string(i) + " type anchor so skipping\n");
             continue;
+        }
 
-        double currVertexX = ps->graphVertices[i].mX;
-        double currVertexY = ps->graphVertices[i].mY;
+        // need to check if the vertices are essentially collinear.
+        // if so, then don't add them
+        // this can happen because the earcut algorithm or any triangulation isn't nice on boundaries
+        double cX = ps->graphVertices[i].mX; // current vertex
+        double cY = ps->graphVertices[i].mY;
+        double pX = ps->graphVertices[(i - 1) % numBoundaryVertices].mX; // previous vertex
+        double pY = ps->graphVertices[(i - 1) % numBoundaryVertices].mY;
+        double nX = ps->graphVertices[(i + 1) % numBoundaryVertices].mX; // next vertex
+        double nY = ps->graphVertices[(i + 1) % numBoundaryVertices].mY;
+
+//        double lenFar = sqrt((nX-pX)*(nX-pX) + (nY-pY)*(nY-pY) );
+//        double lenNear = sqrt((cX-pX)*(cX-pX) + (cY-pY)*(cY-pY) );
+//        double ratio = lenFar/lenNear;
+//
+//        if (ps->graphVertices[i].mType == vertexType::AnchorKnot and (abs(pX+ratio*(cX-pX) - nX) + abs(pY+ratio*(cY-pY) - nY) ) < tolerance)
+        if (ps->graphVertices[i].mType == vertexType::AnchorKnot and isCollinear(cX, cY, nX, nY, pX, pY))
+        {
+            debug(shapeDebugSimple, "VertexList for earcut i = " + to_string(i) + " are essentially collinear - will ignore. Prev = " + to_string((i - 1)%numBoundaryVertices) + " next = " + to_string((i + 1)%numBoundaryVertices) + "\n");
+            ps->collinearBoundaryVertexIndices[i] = true;
+            continue;
+        }
+
+        if (!(ps->graphVertices[i].mType == vertexType::AnchorKnot
+              or ps->graphVertices[i].mType == vertexType::Vertex
+              or ps->graphVertices[i].mType == vertexType::Knot))
+        {
+            cout << "Error: type not vertices, anchorKnots, and knots when adding to earcut!" << endl;
+            exit(1);
+        }
 
         Point pt;
-        pt[0] = currVertexX;
-        pt[1] = currVertexY;
+        pt[0] = cX;
+        pt[1] = cY;
         vertexList.push_back(pt);
+
         ps->internalGraphIndicesFromEarcutVertices.push_back(i);
-        
-        debug(shapeDebugDetailed, "VertexList for earcut i = " + to_string(i) + " x = " + to_string(pt[0]) + " y = " + to_string(pt[1]) + "\n");
+        debug(shapeDebugSimple, "VertexList for triangulation i = " + to_string(i) + " x = " + to_string(cX) + " y = " + to_string(cY) + "\n");
     }
     polygon.push_back(vertexList);
-
+    
     // Returns array of indices that refer to the vertices of the input polygon.
     // Three subsequent indices form a triangle. Output triangles are clockwise.
     // The indices vector points to the index in vertexList, which isn't the same index in graphVertices
     
     ps->triangulationIndices.clear();
-    ps->triangulationIndices = mapbox::earcut<size_t>(polygon);
+//    debug(shapeDebugSimple, "...Triangulation for shape id " + to_string(id) + " numTriangles = " + to_string(d.triangles.size()/3) + "\n");
+//    for (size_t i = 0; i < d.triangles.size(); i++)
+//    {
+//        ps->triangulationIndices.push_back(d.triangles[i]);
+//        debug(shapeDebugSimple, "...Triangulation for shape id " + to_string(id) + " i = " + to_string(i) + " index = " + to_string(d.triangles[i]) + "\n");
+//    }
+
+    vector<size_t> initialTriangulation = mapbox::earcut<size_t>(polygon);
+//    ps->triangulationIndices = mapbox::earcut<size_t>(polygon);
+    // if any triangle is made of collinear points, don't include it
+    for (size_t i = 0; i < initialTriangulation.size(); i+=3)
+    {
+        size_t first = initialTriangulation[i];
+        size_t second = initialTriangulation[i+1];
+        size_t third = initialTriangulation[i+2];
+        double x1 = ps->graphVertices[ps->internalGraphIndicesFromEarcutVertices[first]].mX;
+        double y1 = ps->graphVertices[ps->internalGraphIndicesFromEarcutVertices[first]].mY;
+        double x2 = ps->graphVertices[ps->internalGraphIndicesFromEarcutVertices[second]].mX;
+        double y2 = ps->graphVertices[ps->internalGraphIndicesFromEarcutVertices[second]].mY;
+        double x3 = ps->graphVertices[ps->internalGraphIndicesFromEarcutVertices[third]].mX;
+        double y3 = ps->graphVertices[ps->internalGraphIndicesFromEarcutVertices[third]].mY;
+        if (!isCollinear(x1, y1, x2, y2, x3, y3))
+        {
+            ps->triangulationIndices.push_back(first);
+            ps->triangulationIndices.push_back(second);
+            ps->triangulationIndices.push_back(third);
+        }
+    }
     
-    // shape has now been triangulated - done with mapbox earcut code
+    for (size_t i = 0; i < ps->triangulationIndices.size(); i++)
+    {
+        debug(shapeDebugSimple, "...Triangulation for shape id " + to_string(id) + " i = " + to_string(i) + " triangulation index = " + to_string(ps->triangulationIndices[i]) + " graph index = " + to_string(ps->internalGraphIndicesFromEarcutVertices[ps->triangulationIndices[i]]) + "\n");
+    }
+    
+    // shape has now been triangulated - done with triangulation code
     debug(shapeDebugExtra, "Completed triangulation for shape id " + to_string(id) + "\n");
     debug(shapeDebugExtra, "Start to create centroids for shape id " + to_string(id) + "\n");
 
     ps->triangleList.clear(); // include a spot for the centroid vertex
 
     ps->initNumVertices = ps->graphVertices.size();
-    ps->numPossibleEdges = ps->initNumVertices * ps->initNumVertices + ps->initNumVertices + 1;
+    ps->numPossibleEdges = ps->initNumVertices * ps->initNumVertices + 1;
 
+    // this is used to combine two size_t into a single size_t
+    // it's to have a way of looking at all pairs and seeing which ones are connected
+    // it's used later when having the triangles matching on the edges
     debug(shapeDebugExtra, "numPossibleEdges =  " + to_string(ps->numPossibleEdges) + " initNumVertices = " + to_string(ps->initNumVertices) + "\n");
 
     ps->edgeIntersections.clear();
@@ -1071,15 +1191,18 @@ void shapes::triangulateBorderAndCreateCentroids(size_t id)
     {
         ps->edgeIntersections.push_back(0);
     }
-
+    
     // create all the centroids of the triangulation
     for (size_t i = 0; i < ps->triangulationIndices.size() / 3; i++)
     {
         size_t first = ps->internalGraphIndicesFromEarcutVertices[ps->triangulationIndices[3*i]];
         size_t second = ps->internalGraphIndicesFromEarcutVertices[ps->triangulationIndices[3*i + 1]];
         size_t third = ps->internalGraphIndicesFromEarcutVertices[ps->triangulationIndices[3*i + 2]];
-        debug(shapeDebugDetailed, "Centroids: first = " + to_string(first) + " second = " + to_string(second) + " third = " + to_string(third) +"\n");
-        
+        debug(shapeDebugExtra, "Centroids: first = " + to_string(first) + " second = " + to_string(second) + " third = " + to_string(third) +"\n");
+                
+        // This is to find common edges that are intersected twice
+        // The boundary will only have a single intersection
+        // Many will have zero
         if (first < second)
             ps->edgeIntersections[first * ps->initNumVertices + second]++;
         else
@@ -1097,10 +1220,18 @@ void shapes::triangulateBorderAndCreateCentroids(size_t id)
 
         addCentroidVertex(id, first, second, third); // adds centroid to internal graph
         ps->triangleList.push_back({first, second, third, ps->graphVertices.size() - 1});
-        debug(shapeDebugDetailed, "Centroids first = " + to_string(first) + " second = " + to_string(second) + " third = " + to_string(third) + " centroid = " + to_string(ps->graphVertices.size()-1) + "\n");
+        debug(shapeDebugSimple, "Centroids first = " + to_string(first) + " second = " + to_string(second) + " third = " + to_string(third) + " centroid = " + to_string(ps->graphVertices.size()-1) + "\n");
     }
     
+    for (size_t i = 0; i < ps->numPossibleEdges; i++)
+    {
+        if (ps->edgeIntersections[i] != 0)
+            debug(shapeDebugSimple, "Shape id " + to_string(id) + " finding edges i = " + to_string(i) + " first = " + to_string(i / ps->initNumVertices) + " second = " + to_string(i % ps->initNumVertices) + " num = " + to_string(ps->edgeIntersections[i]) + "\n");
+    }
+
     debug(shapeDebugExtra, "Completed creating centroids for shape id " + to_string(id) + "\n");
+    debug(shapeDebugExtra, ps->printGraphVertices());
+    debug(shapeDebugExtra, ps->printBoundaryVertices());
 }
 
 // this function adds a centroid of each triangle in the triangulation to the internal graph
@@ -1135,11 +1266,11 @@ void shapes::addSplitEdges(size_t id, size_t leftID, size_t rightID)
     vector<size_t>::iterator it = find(ps->graphVertices[leftID].mSplitGraphNeighbourVertexWithBoundaryIDs.begin(), ps->graphVertices[leftID].mSplitGraphNeighbourVertexWithBoundaryIDs.end(), rightID);
     if (it == ps->graphVertices[leftID].mSplitGraphNeighbourVertexWithBoundaryIDs.end()) // not added yet
     {
-        debug(shapeDebugDetailed, "Shape id " + to_string(id) + " shape boundary add split edges: " + to_string(leftID) + " - " + to_string(rightID) + " " +  "\n");
+        debug(shapeDebugExtra, "...Shape id " + to_string(id) + " shape boundary add split edges: " + to_string(leftID) + " - " + to_string(rightID) + " " +  "\n");
         ps->graphVertices[leftID].mSplitGraphNeighbourVertexWithBoundaryIDs.push_back(rightID);
-        debug(shapeDebugDetailed, "Vertices: " + to_string(leftID) + " - " + ps->graphVertices[leftID].print());
+        debug(shapeDebugExtra, "...Vertices: " + to_string(leftID) + " - " + ps->graphVertices[leftID].print());
         ps->graphVertices[rightID].mSplitGraphNeighbourVertexWithBoundaryIDs.push_back(leftID);
-        debug(shapeDebugDetailed, "Vertices: " + to_string(rightID) + " - " + ps->graphVertices[rightID].print());
+        debug(shapeDebugExtra, "...Vertices: " + to_string(rightID) + " - " + ps->graphVertices[rightID].print());
     }
 
     // now add to the internal graph - this is what's used for path finding
@@ -1163,11 +1294,11 @@ void shapes::addSplitEdges(size_t id, size_t leftID, size_t rightID)
     it = find(ps->graphVertices[leftID].mSplitGraphNeighbourVertexIDs.begin(), ps->graphVertices[leftID].mSplitGraphNeighbourVertexIDs.end(), rightID);
     if (it == ps->graphVertices[leftID].mSplitGraphNeighbourVertexIDs.end()) // not added yet
     {
-        debug(shapeDebugDetailed, "Add split edges: " + to_string(leftID) + " - " + to_string(rightID) + "\n");
+        debug(shapeDebugExtra, "...Add split edges: " + to_string(leftID) + " - " + to_string(rightID) + "\n");
         ps->graphVertices[leftID].mSplitGraphNeighbourVertexIDs.push_back(rightID);
-        debug(shapeDebugDetailed, "LeftID: " + to_string(leftID) + ps->graphVertices[leftID].print());
+        debug(shapeDebugExtra, "...LeftID: " + to_string(leftID) + ps->graphVertices[leftID].print());
         ps->graphVertices[rightID].mSplitGraphNeighbourVertexIDs.push_back(leftID);
-        debug(shapeDebugDetailed, "RightID: " + to_string(rightID) + ps->graphVertices[rightID].print());
+        debug(shapeDebugExtra, "...RightID: " + to_string(rightID) + ps->graphVertices[rightID].print());
     }
 }
 
@@ -1181,6 +1312,7 @@ void shapes::createInternalGraph(size_t id)
     // and join the centroids to that new vertex
     for (size_t i = 0; i < ps->numPossibleEdges; i++)
     {
+        debug(shapeDebugDetailed, "Shape id " + to_string(id) + " create internal start graph check edge i = " + to_string(i) + "\n");
         if (ps->edgeIntersections[i] == 2) // we have a matching edge
         {
             size_t first = i / ps->initNumVertices;
@@ -1195,9 +1327,15 @@ void shapes::createInternalGraph(size_t id)
                 if ( (vertices[0] == first || vertices[1] == first || vertices[2] == first) && (vertices[0] == second || vertices[1] == second || vertices[2] == second) ) // this is one of the triangles
                     centroids.push_back(vertices[3]);
             }
-            debug(shapeDebugDetailed, "Shape id " + to_string(id) + " create internal graph centroids[0] = " + to_string(centroids[0]) + " centroids[1] = " + to_string(centroids[1]) + "\n");
+            if (centroids.size() != 2)
+            {
+                cout << "incorrect number of centroids!" << endl;
+                exit(1);
+            }
+            debug(shapeDebugExtra, "Shape id " + to_string(id) + " create internal graph centroids[0] = " + to_string(centroids[0]) + " centroids[1] = " + to_string(centroids[1]) + "\n");
             addEdgeVertex(id, first, second, centroids[0], centroids[1]);
         }
+        debug(shapeDebugDetailed, "Shape id " + to_string(id) + " create internal graph finish check edge i = " + to_string(i) + "\n");
     }
         
     size_t numBoundary = ps->numBoundaryVertices;
@@ -1228,14 +1366,14 @@ void shapes::createInternalGraph(size_t id)
     for (size_t i = 0; i < ps->graphVertices.size(); i++)
     {
         vertex vx = ps->graphVertices[i];
-        debug(shapeDebugDetailed, "vertex " + to_string(i) + " " + vx.print());
+        debug(shapeDebugExtra, "vertex " + to_string(i) + " " + vx.print());
 
         for (size_t j = 0; j < vx.mSplitGraphNeighbourVertexIDs.size(); j++)
         {
             ps->weights[i - numBoundary][vx.mSplitGraphNeighbourVertexIDs[j] - numBoundary] = 1;
         }
     }
-    debug(shapeDebugDetailed, ps->printGraphVertices());
+    debug(shapeDebugExtra, ps->printGraphVertices());
 
     // creating the small internal graph
     for (size_t i = 0; i < numInternal; i++)
@@ -1253,7 +1391,7 @@ void shapes::createInternalGraph(size_t id)
         vertex vx = ps->graphVertices[i];
         size_t j = ps->getNearestInternalNeighbourFromBoundary(i);
         UNUSED(j); // this variable is not used - the nearest neighbour function needs cleanup
-        debug(shapeDebugDetailed, "Nearest neighbour " + to_string(i) + " is " + to_string(j) + "\n");
+        debug(shapeDebugExtra, "Nearest neighbour " + to_string(i) + " is " + to_string(j) + "\n");
     }
     
     // print out the entire set of vertices and neighbours
@@ -1269,21 +1407,21 @@ void shapes::createAllPairsPaths(size_t id)
 {
     shape * ps = mShapes[id];
 
-    debug(shapeDebugExtra, "Started to create all pairs paths for shape id " + to_string(id) + "\n");
+    debug(shapeDebugSimple, "Started to create all pairs paths for shape id " + to_string(id) + "\n");
 
     // use Dijkstra = O(V(V+V^2)logV) from each point to all other points
     // Section 22.3 Introduction to Algorithms 4e
 
     // Create the all-pairs paths through the search function
+    debug(shapeDebugSimple, "AnchorIndices shape id " + to_string(id) + "\n" + ps->printAnchorVertices());
+    debug(shapeDebugSimple, "GraphIndices shape id " + to_string(id) + "\n" + ps->printGraphVertices());
 
-    debug(shapeDebugExtra, "AnchorIndices shape id " + to_string(id) + "\n" + ps->printAnchorVertices());
-    
     for (size_t start = 0; start < ps->anchorIndices.size(); start++)
     {
         searchFromVertex(id, ps->anchorIndices[start]);
     }
     
-    debug(shapeDebugExtra, "Completed creating all pairs paths for shape id " + to_string(id) + "\n");
+    debug(shapeDebugSimple, "Completed creating all pairs paths for shape id " + to_string(id) + "\n");
 }
 
 void shapes::searchFromVertex(size_t id, size_t startVertex)
@@ -1447,13 +1585,13 @@ void shapes::searchFromVertex(size_t id, size_t startVertex)
 void shapes::createChildShapes(size_t id)
 {
     shape * ps = mShapes[id];
-
+    
     size_t totalNumPaths = ps->anchorIndices.size() * ps->anchorIndices.size() - ps->anchorIndices.size();
-
-    debug(shapeDebugSimple, "\nStarted to create child shapes for shape id " + to_string(id) + " numpaths = " + to_string(totalNumPaths) + "\n");
-
+    
+    debug(shapeDebugExtra, "\nStarted to create child shapes for shape id " + to_string(id) + " numpaths = " + to_string(totalNumPaths) + "\n");
+    
     size_t count = 0;
-
+    
     // debug all the paths
     for (size_t i = 0; i < ps->anchorIndices.size(); i++)
     {
@@ -1468,7 +1606,7 @@ void shapes::createChildShapes(size_t id)
             debug(shapeDebugExtra, "Shape id " + to_string(id) + " path number = " + to_string(count) + " : split from " + to_string(vstart) + " to " + to_string(vend) + " " + ps->printPath(i, j));
         }
     }
-
+    
     count = 0;
     for (size_t i = 0; i < ps->anchorIndices.size(); i++)
     {
@@ -1478,18 +1616,26 @@ void shapes::createChildShapes(size_t id)
             size_t vend = ps->anchorIndices[j];
             if (vstart == vend) // not creating a path to itself
                 continue;
-
+            
             count++;
             debug(shapeDebugExtra, "Shape id " + to_string(id) + " new boundary count = " + to_string(count) + " : split from " + to_string(vstart) + " to " + to_string(vend) + "\n");
             debug(shapeDebugExtra, ps->printGraphVertices());
+            
+            string leftName;
+            string rightName;
+            size_t leftID = addChildShape(id, leftName);
+            debug(shapeDebugExtra, "createChildShapes: leftID = " + to_string(leftID) + " ");
+            size_t rightID = addChildShape(id, rightName);
+            debug(shapeDebugExtra, "createChildShapes: rightID = " + to_string(rightID) + " ");
 
+            
             // create two new shapes with the boundary given by the path split and the outline to either side
             vector<size_t> path = ps->allPairsPaths[vstart][vend];
             vector<size_t> boundaryLeft;
             vector<size_t> boundaryRight;
-
+            
             debug(shapeDebugExtra, "shape : " + to_string(id) + " " + ps->printPath(vstart, vend));
-
+            
             // create the left boundary (clockwise boundary)
             // outside then reverse path
             size_t currLeft = vstart;
@@ -1503,7 +1649,7 @@ void shapes::createChildShapes(size_t id)
             {
                 boundaryLeft.push_back(path[path.size() - 1 - i]);
             }
-
+            
             // create the right boundary (clockwise boundary)
             // forward path then outside
             boundaryRight.push_back(vstart);
@@ -1517,7 +1663,7 @@ void shapes::createChildShapes(size_t id)
                 currRight = (currRight + 1) % ps->numBoundaryVertices; // border vertices do not include the internal graph
                 boundaryRight.push_back(currRight);
             }
-
+            
             // to debug the boundaries
             debug(shapeDebugExtra, "Shape id " + to_string(id) + " boundary left: ");
             for (size_t i = 0; i < boundaryLeft.size(); i++)
@@ -1525,18 +1671,27 @@ void shapes::createChildShapes(size_t id)
                 debug(shapeDebugExtra, to_string(boundaryLeft[i]) + " ");
             }
             debug(shapeDebugExtra, "\n");
-
+            
             debug(shapeDebugExtra, "Shape id " + to_string(id) + " boundary right: ");
             for (size_t i = 0; i < boundaryRight.size(); i++)
             {
                 debug(shapeDebugExtra, to_string(boundaryRight[i]) + " ");
             }
             debug(shapeDebugExtra, "\n");
-            
-            string leftName;
-            string rightName;
-            size_t leftID = addChildShape(id, leftName);
-            size_t rightID = addChildShape(id, rightName);
+
+            debug(shapeDebugExtra, "Shape id " + to_string(id) + " boundary left id " + to_string(leftID) + "\n");
+            for (size_t i = 0; i < boundaryLeft.size(); i++)
+            {
+                vertex vx = ps->graphVertices[boundaryLeft[i]];
+                debug(shapeDebugExtra, vx.print());
+            }
+
+            debug(shapeDebugExtra, "Shape id " + to_string(id) + " boundary right id " + to_string(rightID) + "\n");
+            for (size_t i = 0; i < boundaryRight.size(); i++)
+            {
+                vertex vx = ps->graphVertices[boundaryRight[i]];
+                debug(shapeDebugExtra, vx.print());
+            }
             
             for (size_t i = 0; i < boundaryLeft.size(); i++)
             {
@@ -1554,14 +1709,16 @@ void shapes::createChildShapes(size_t id)
                 vx.mNeighbourVertexIDs.clear();
                 vx.mSplitGraphNeighbourVertexIDs.clear();
                 vx.mSplitGraphNeighbourVertexWithBoundaryIDs.clear();
-
+                
                 addVertex(leftID, vx);
                 
                 debug(shapeDebugExtra, "Shape id " + to_string(id) + " left split vertex " + to_string(i) + " for leftID " + to_string(leftID) + " " + vx.print());
             }
             addBoundaryEdges(leftID);
+            debug(shapeDebugExtra, "Shape id " + to_string(id) + " add boundary edges left done\n");
             split(leftID);
-
+            debug(shapeDebugExtra, "Shape id " + to_string(id) + " split left done\n");
+            
             for (size_t i = 0; i < boundaryRight.size(); i++)
             {
                 size_t vIndex = boundaryRight[i];
@@ -1574,18 +1731,20 @@ void shapes::createChildShapes(size_t id)
                 {
                     vx.mType = vertexType::Knot;
                 }
-
+                
                 vx.mNeighbourVertexIDs.clear();
                 vx.mSplitGraphNeighbourVertexIDs.clear();
                 vx.mSplitGraphNeighbourVertexWithBoundaryIDs.clear();
-
+                
                 addVertex(rightID, vx);
                 debug(shapeDebugExtra, "Shape id " + to_string(id) + " right split vertex " + to_string(i) + " for rightID " + to_string(rightID) + " " + vx.print());
             }
             addBoundaryEdges(rightID);
+            debug(shapeDebugExtra, "Shape id " + to_string(id) + " add boundary edges right done\n");
             split(rightID);
-            
-            ps->subshapeIDs.push_back(make_pair(leftID, rightID));            
+            debug(shapeDebugExtra, "Shape id " + to_string(id) + " split right done\n");
+
+            ps->subshapeIDs.push_back(make_pair(leftID, rightID));
         }
     }
     
@@ -1647,4 +1806,28 @@ size_t shapes::getCurrentDepth(size_t id)
     shape * ps = mShapes[id];
 
     return ps->mCurrDepth;
+}
+
+bool isCollinear(double ax, double ay, double bx, double by, double cx, double cy)
+{
+//    double lenFar = sqrt((ax-cx)*(ax-cx) + (ay-cy)*(ay-cy) );
+//    double lenNear = sqrt((bx-cx)*(bx-cx) + (by-cy)*(by-cy) );
+//    double ratio = lenFar/lenNear;
+//
+//    if ((abs(cx+ratio*(bx-cx) - ax) + abs(cy+ratio*(by-cy) - ay) ) < tolerance)
+//    {
+//        return true;
+//    }
+
+    double lx = bx - ax;
+    double ly = by - ay;
+    double rx = cx - ax;
+    double ry = cy - ay;
+    
+    if (abs(lx*ry - ly*rx) < epsilon)
+    {
+        return true;
+    }
+    
+    return false;
 }
