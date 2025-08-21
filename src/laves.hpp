@@ -48,6 +48,8 @@ extern bool isTileSplitQuad;
 extern bool isTileSplitPent;
 extern bool isTileSplitBent;
 extern bool isTileSplitStar;
+extern bool isTileBroken;
+extern bool isTileSquareBroken;
 
 extern shapes *gShapes;
 extern actions *gActions;
@@ -82,7 +84,8 @@ extern size_t tileSplitTriangle;
 extern size_t tileSplitQuad;
 extern size_t tileSplitPent;
 extern size_t tileSplitBent;
-extern size_t tileSplitStar;
+extern size_t tileBroken;
+extern size_t tileSquareBroken;
 
 void createLaves();
 
@@ -116,5 +119,7 @@ void createTileSplitQuad();
 void createTileSplitPent();
 void createTileSplitBent();
 void createTileSplitStar();
+void createTileBroken();
+void createTileSquareBroken();
 
 #endif /* laves_hpp */
